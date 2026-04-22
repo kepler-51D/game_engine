@@ -11,8 +11,7 @@ pub struct BufferVec {
 
 impl BufferVec {
     pub fn new(element_size: usize,device: &Device) -> Self {
-        println!("{element_size}");
-        assert_eq!(element_size % 4, 0, "element_size must be multiple of 4");
+        debug_assert_eq!(element_size % 4, 0, "element_size must be multiple of 4");
         Self {
             len: 0,
             element_size,
@@ -25,18 +24,19 @@ impl BufferVec {
         }
     }
     pub fn write_elem(&self, index: usize, data: &[u8], queue: &Queue) {
-        assert_eq!(data.len(), self.element_size, "tried to write invalid length of data to buffervec");
+        debug_assert_eq!(data.len(), self.element_size, "tried to write invalid length of data to buffervec");
         queue.write_buffer(&self.buffer, (index*self.element_size) as u64, data);
     }
     pub fn push(&mut self, elem: &[u8], device: &Device, queue: &Queue, encoder: &mut CommandEncoder) {
-        assert_eq!(elem.len(),self.element_size);
-        if (self.len >= self.maxlen) {
+        debug_assert_eq!(elem.len(),self.element_size, "invalid element length");
+        if self.len >= self.maxlen {
             self.reserve(self.maxlen*GROWTH_RATE, device, encoder);
         }
         queue.write_buffer(&self.buffer, (self.len*self.element_size) as u64, elem);
         self.len += 1;
     }
     pub fn reserve(&mut self, new_size: usize, device: &Device, encoder: &mut CommandEncoder) {
+        debug_assert!(new_size > self.len);
         self.maxlen = new_size;
         let new_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("buffer_vec"),

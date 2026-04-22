@@ -25,12 +25,14 @@ impl LightUniform {
 
 // model.rs
 pub trait DrawLight<'a> {
-    // fn draw_light_mesh(
-    //     &mut self,
-    //     mesh: &'a Mesh,
-    //     camera_bind_group: &'a wgpu::BindGroup,
-    //     light_bind_group: &'a wgpu::BindGroup,
-    // );
+    #[allow(dead_code)]
+    fn draw_light_mesh(
+        &mut self,
+        mesh: &'a Mesh,
+        camera_bind_group: &'a wgpu::BindGroup,
+        light_bind_group: &'a wgpu::BindGroup,
+    );
+    #[allow(dead_code)]
     fn draw_light_mesh_instanced(
         &mut self,
         mesh: &'a Mesh,
@@ -38,13 +40,14 @@ pub trait DrawLight<'a> {
         camera_bind_group: &'a wgpu::BindGroup,
         light_bind_group: &'a wgpu::BindGroup,
     );
-
+    #[allow(dead_code)]
     fn draw_light_model(
         &mut self,
         model: &'a Model,
         camera_bind_group: &'a wgpu::BindGroup,
         light_bind_group: &'a wgpu::BindGroup,
     );
+    #[allow(dead_code)]
     fn draw_light_model_instanced(
         &mut self,
         model: &'a Model,
@@ -58,14 +61,14 @@ impl<'a, 'b> DrawLight<'b> for wgpu::RenderPass<'a>
 where
     'b: 'a,
 {
-    // fn draw_light_mesh(
-    //     &mut self,
-    //     mesh: &'b Mesh,
-    //     camera_bind_group: &'b wgpu::BindGroup,
-    //     light_bind_group: &'b wgpu::BindGroup,
-    // ) {
-    //     self.draw_light_mesh_instanced(mesh, 0..1, camera_bind_group, light_bind_group);
-    // }
+    fn draw_light_mesh(
+        &mut self,
+        mesh: &'b Mesh,
+        camera_bind_group: &'b wgpu::BindGroup,
+        light_bind_group: &'b wgpu::BindGroup,
+    ) {
+        self.draw_light_mesh_instanced(mesh, 0..1, camera_bind_group, light_bind_group);
+    }
 
     fn draw_light_mesh_instanced(
         &mut self,

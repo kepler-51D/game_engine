@@ -1,12 +1,12 @@
 use std::ops::{Range};
 use std::io::{BufReader, Cursor};
 use glam::{Vec2, Vec3};
-use wgpu::Device;
-use wgpu::util::BufferInitDescriptor;
 use wgpu::{util::DeviceExt};
 use crate::app_manager::mesh::load_string;
 use crate::{advanced_rendering::{render_vertex::Vertex, texture::Texture}};
 
+
+#[allow(dead_code)]
 pub struct Material {
     pub name: String,
     pub diffuse_texture: Texture,
@@ -53,6 +53,7 @@ impl Material {
     }
 }
 
+#[allow(dead_code)]
 pub struct Mesh {
     pub name: String,
     pub vertex_buffer: wgpu::Buffer,
@@ -77,6 +78,7 @@ impl Model {
         let obj_cursor = Cursor::new(obj_text);
         let mut obj_reader = BufReader::new(obj_cursor);
 
+        #[allow(deprecated)]
         let (models, obj_materials) = tobj::load_obj_buf_async(
             &mut obj_reader,
             &tobj::LoadOptions {
@@ -172,17 +174,17 @@ impl Model {
                     let bitangent = (delta_pos2 * delta_uv1.x - delta_pos1 * delta_uv2.x) * -r;
 
                     vertices[c[0] as usize].tangent =
-                        (tangent + vertices[c[0] as usize].tangent);
+                        tangent + vertices[c[0] as usize].tangent;
                     vertices[c[1] as usize].tangent =
-                        (tangent + vertices[c[1] as usize].tangent);
+                        tangent + vertices[c[1] as usize].tangent;
                     vertices[c[2] as usize].tangent =
-                        (tangent + vertices[c[2] as usize].tangent);
+                        tangent + vertices[c[2] as usize].tangent;
                     vertices[c[0] as usize].bitangent =
-                        (bitangent + vertices[c[0] as usize].bitangent);
+                        bitangent + vertices[c[0] as usize].bitangent;
                     vertices[c[1] as usize].bitangent =
-                        (bitangent + vertices[c[1] as usize].bitangent);
+                        bitangent + vertices[c[1] as usize].bitangent;
                     vertices[c[2] as usize].bitangent =
-                        (bitangent + vertices[c[2] as usize].bitangent);
+                        bitangent + vertices[c[2] as usize].bitangent;
 
                     triangles_included[c[0] as usize] += 1;
                     triangles_included[c[1] as usize] += 1;
@@ -221,6 +223,7 @@ impl Model {
     }
 }
 pub trait DrawModel<'a> {
+    #[allow(dead_code)]
     fn draw_mesh(
         &mut self,
         mesh: &'a Mesh,
@@ -228,6 +231,7 @@ pub trait DrawModel<'a> {
         camera_bind_group: &'a wgpu::BindGroup,
         light_bind_group: &'a wgpu::BindGroup,
     );
+    #[allow(dead_code)]
     fn draw_mesh_instanced(
         &mut self,
         mesh: &'a Mesh,
@@ -236,12 +240,14 @@ pub trait DrawModel<'a> {
         camera_bind_group: &'a wgpu::BindGroup,
         light_bind_group: &'a wgpu::BindGroup,
     );
+    #[allow(dead_code)]
     fn draw_model(
         &mut self,
         model: &'a Model,
         camera_bind_group: &'a wgpu::BindGroup,
         light_bind_group: &'a wgpu::BindGroup,
     );
+    #[allow(dead_code)]
     fn draw_model_instanced(
         &mut self,
         model: &'a Model,

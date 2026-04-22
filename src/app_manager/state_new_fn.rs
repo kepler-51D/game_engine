@@ -1,21 +1,25 @@
 use std::{collections::HashSet, f32::consts::PI, sync::Arc};
 
-use glam::{Mat4, Quat, Vec3, Vec4};
-use wgpu::{BackendOptions, BindGroupLayout, Buffer, Device, InstanceFlags, MemoryBudgetThresholds, Queue, util::DeviceExt};
+use glam::{Mat4, Vec3, Vec4};
+use wgpu::{BackendOptions, InstanceFlags, MemoryBudgetThresholds, util::DeviceExt};
 use winit::window::Window;
 
-use crate::{advanced_rendering::{
-    extendable_buffer::BufferVec,
-    camera, instance::{Instance, InstanceRaw},
-    lighting::LightUniform, model::Model, render_vertex::Vertex, texture::Texture}, app_manager::{camera::CameraUniform, camera_controller::CameraController, render_pipeline::create_render_pipeline,
-        state::{CAMERA_ROTATION_SPEED, State}}, mesh_instance::MeshInstance, player_controller::player::Player, transform::Transform};
+use crate::{
+    advanced_rendering::{
+        mesh_instance::MeshInstance,
+        extendable_buffer::BufferVec,
+        camera, instance::{Instance, InstanceRaw},
+        lighting::LightUniform, model::Model, render_vertex::Vertex, texture::Texture
+    },
+    app_manager::{
+        camera::CameraUniform, render_pipeline::create_render_pipeline,
+        state::State
+    },
+    player_controller::player::Player,
+    transform::Transform
+};
 
 impl State {
-    pub async fn load_models(models: &mut Vec<Model>, device: &Device, queue: &Queue, texture_bind_group_layout: &BindGroupLayout) -> Result<(),()> {
-        models.push(Model::load_model("cube.obj", device, queue, texture_bind_group_layout).await.unwrap());
-        models.push(Model::load_model("flat.obj", device, queue, texture_bind_group_layout).await.unwrap());
-        Ok(())
-    }
     pub async fn new(window: Arc<Window>) -> anyhow::Result<State> {
         let size = window.inner_size();
 
@@ -223,29 +227,29 @@ impl State {
             &[Vertex::desc(), InstanceRaw::desc()],
             shader,
         );
-        let instances = (0..Instance::NUM_INSTANCES_PER_ROW).flat_map(|z| {
-            (0..Instance::NUM_INSTANCES_PER_ROW).map(move |x| {
-                let position = Vec3 { x: (x*4) as f32, y: 0.0, z: (z*4) as f32 } - Instance::INSTANCE_DISPLACEMENT;
+        // let instances = (0..Instance::NUM_INSTANCES_PER_ROW).flat_map(|z| {
+        //     (0..Instance::NUM_INSTANCES_PER_ROW).map(move |x| {
+        //         let position = Vec3 { x: (x*4) as f32, y: 0.0, z: (z*4) as f32 } - Instance::INSTANCE_DISPLACEMENT;
 
-                let rotation = if position == Vec3::ZERO {
-                    Quat::from_axis_angle(Vec3::Z, 0.0)
-                } else {
-                    Quat::from_axis_angle(position.normalize(), PI/4.0)
-                };
+        //         let rotation = if position == Vec3::ZERO {
+        //             Quat::from_axis_angle(Vec3::Z, 0.0)
+        //         } else {
+        //             Quat::from_axis_angle(position.normalize(), PI/4.0)
+        //         };
 
-                Instance {
-                    position,_padding:0, rotation,
-                }
-            })
-        }).collect::<Vec<_>>();
-        let instance_data = instances.iter().map(Instance::instance_to_raw).collect::<Vec<_>>();
-        let instance_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Instance Buffer"),
-                contents: bytemuck::cast_slice(&instance_data),
-                usage: wgpu::BufferUsages::VERTEX,
-            }
-        );
+        //         Instance {
+        //             position,_padding:0, rotation,
+        //         }
+        //     })
+        // }).collect::<Vec<_>>();
+        // let instance_data = instances.iter().map(Instance::instance_to_raw).collect::<Vec<_>>();
+        // let instance_buffer = device.create_buffer_init(
+        //     &wgpu::util::BufferInitDescriptor {
+        //         label: Some("Instance Buffer"),
+        //         contents: bytemuck::cast_slice(&instance_data),
+        //         usage: wgpu::BufferUsages::VERTEX,
+        //     }
+        // );
 
         let mut models: Vec<(Model,BufferVec)> = Vec::new();
         models.push((
@@ -265,19 +269,17 @@ impl State {
         let _ = window.set_cursor_grab(winit::window::CursorGrabMode::Locked);
         window.set_cursor_visible(false);
 
-        let mut player: Player = Player {
-            buffer_in_date: false,
+        let player: Player = Player {
             speed: Vec3::ZERO,
             yaw: -PI/2.0,
             pitch: 0.0,
-            transform: Transform::default(&device),
+            transform: Transform::default(),
             mesh_instance: MeshInstance { model_index: 0, instance_index: 0 },
         };
         Ok(Self {
             models,
             keys: HashSet::new(),
             player,
-            texture_bind_group_layout,
             camera_buffer,
             camera_bind_group,
             camera_uniform,
@@ -287,10 +289,7 @@ impl State {
             light_uniform,
             light_bind_group,
             light_buffer,
-            instance_buffer,
-            instances,
             depth_texture,
-            cam:camera,
             render_pipeline,
             surface,
             device,

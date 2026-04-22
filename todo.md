@@ -1,4 +1,0 @@
-- get voxels working
-- textures
-- lighting
-- normals

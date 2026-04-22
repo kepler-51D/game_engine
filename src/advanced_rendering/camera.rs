@@ -1,7 +1,4 @@
 use glam::{Mat4,Vec3};
-
-use crate::player_controller::player::CAM_OFFSET;
-
 #[derive(Debug)]
 pub struct Camera {
     pub position: Vec3,

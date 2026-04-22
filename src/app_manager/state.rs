@@ -1,22 +1,19 @@
-use std::{collections::HashSet, f32::consts::PI, sync::Arc};
-use glam::{IVec3, Mat3, Mat4, Quat, Vec3, Vec4};
-use wgpu::{BackendOptions, BindGroupLayout, Buffer, CurrentSurfaceTexture, InstanceFlags, LoadOpDontCare, MemoryBudgetThresholds, RenderPipeline, util::DeviceExt, wgt::WgpuHasDisplayHandle};
-use crate::{advanced_rendering::{extendable_buffer::BufferVec,instance::{Instance,InstanceRaw}, lighting::{DrawLight, LightUniform}, model::{DrawModel, Model}}, app_manager::{camera::CameraUniform, camera_controller::CameraController, render_pipeline::create_render_pipeline}, mesh_instance::MeshInstance, player_controller::player::{CAM_OFFSET, Player}, transform::TransformBuffer};
+use std::{collections::HashSet, sync::Arc};
+use glam::{Quat, Vec3};
+use wgpu::{CurrentSurfaceTexture, RenderPipeline};
+use crate::advanced_rendering::{extendable_buffer::BufferVec, lighting::{DrawLight, LightUniform}, model::{DrawModel, Model}};
+use crate::app_manager::{camera::CameraUniform};
+use crate::player_controller::player::{CAM_OFFSET, Player};
 use winit::{
     event::{ElementState, KeyEvent, MouseButton, WindowEvent}, event_loop::ActiveEventLoop, keyboard::{KeyCode, PhysicalKey}, window::Window
 };
-use crate::advanced_rendering::camera;
-use crate::advanced_rendering::{render_vertex::Vertex,texture::Texture};
-
-pub const CAMERA_ROTATION_SPEED: f32 = 60.0;
+use crate::advanced_rendering::{camera, texture::Texture};
 
 /// render and game state
 pub struct State {
     pub models: Vec<(Model, BufferVec)>,
     pub keys: HashSet<KeyCode>,
     pub player: Player,
-    pub instances: Vec<Instance>,
-    pub instance_buffer: wgpu::Buffer,
 
     pub surface: wgpu::Surface<'static>,
     pub device: wgpu::Device,
@@ -26,28 +23,25 @@ pub struct State {
     pub is_surface_configured: bool,
     pub window: Arc<Window>,
 
-    // pub camera_controller: CameraController,
     pub mouse_pressed: bool,
     pub projection: camera::Projection,
     pub camera_bind_group: wgpu::BindGroup,
-    pub cam: camera::Camera,
     pub camera_buffer: wgpu::Buffer,
     pub camera_uniform: CameraUniform,
     pub depth_texture: Texture,
 
-    pub texture_bind_group_layout: BindGroupLayout,
-
+    // pub texture_bind_group_layout: BindGroupLayout,
     pub light_uniform: LightUniform,
     pub light_buffer: wgpu::Buffer,
     pub light_bind_group: wgpu::BindGroup,
     pub light_render_pipeline: RenderPipeline,
 }
 impl State {
-    pub fn update(&mut self, dt: instant::Duration) {
+    pub fn update(&mut self, _dt: instant::Duration) {
         let old_position: Vec3 = self.light_uniform.pos;
         self.light_uniform.pos =
-            (Quat::from_axis_angle((0.0, 1.0, 0.0).into(), 0.001)
-                * old_position)
+            Quat::from_axis_angle((0.0, 1.0, 0.0).into(), 0.001)
+                * old_position
                 ;
         self.player.update(&self.queue,&self.models[self.player.mesh_instance.model_index].1);
         self.queue.write_buffer(&self.light_buffer, 0, bytemuck::cast_slice(&[self.light_uniform]));
@@ -65,14 +59,10 @@ impl State {
                     KeyEvent {
                         physical_key: PhysicalKey::Code(key),
                         state,
-                        location,
-                        logical_key,
                         repeat,
-                        text,
                         ..
                     },
-                device_id,
-                is_synthetic,
+                    ..
             } => {
                 if !*repeat {
                     match state {
@@ -86,7 +76,7 @@ impl State {
                 }
                 true
             },
-            WindowEvent::MouseWheel { delta, .. } => {
+            WindowEvent::MouseWheel { delta: _, .. } => {
                 true
             }
             WindowEvent::MouseInput {
@@ -100,7 +90,6 @@ impl State {
             _ => false,
         }
     }
-
     pub fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {
             self.config.width = width;

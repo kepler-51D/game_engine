@@ -9,8 +9,8 @@ pub struct Instance {
     pub position: Vec3,
 }
 impl Instance {
-    pub const NUM_INSTANCES_PER_ROW: u32 = 10;
-    pub const INSTANCE_DISPLACEMENT: Vec3 = Vec3::new(Instance::NUM_INSTANCES_PER_ROW as f32 * 0.5, 0.0, Instance::NUM_INSTANCES_PER_ROW as f32 * 0.5);
+    // pub const NUM_INSTANCES_PER_ROW: u32 = 10;
+    // pub const INSTANCE_DISPLACEMENT: Vec3 = Vec3::new(Instance::NUM_INSTANCES_PER_ROW as f32 * 0.5, 0.0, Instance::NUM_INSTANCES_PER_ROW as f32 * 0.5);
 
     pub fn instance_to_raw(&self) -> InstanceRaw {
         InstanceRaw {

@@ -1,9 +1,6 @@
-#![allow(dead_code)]
-#![allow(unused)]
 mod advanced_rendering;
 mod app_manager;
 mod player_controller;
-mod mesh_instance;
 mod transform;
 mod collision;
 

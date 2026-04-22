@@ -1,10 +1,17 @@
 use std::{collections::HashSet, f32::consts::PI};
 
 use glam::{Mat4, Quat, Vec2, Vec3};
-use wgpu::{Buffer, Device, Queue, util::DeviceExt};
-use winit::{event::ElementState, keyboard::KeyCode};
+use wgpu::{Queue};
+use winit::{keyboard::KeyCode};
 
-use crate::{advanced_rendering::{instance::{Instance, InstanceRaw}, model::{DrawModel, Model},extendable_buffer::BufferVec}, mesh_instance::MeshInstance, transform::Transform};
+use crate::{
+    advanced_rendering::{
+        instance::Instance,
+        extendable_buffer::BufferVec,
+        mesh_instance::MeshInstance
+    },
+    transform::Transform
+};
 
 pub const CAM_OFFSET: Vec3 = Vec3::new(3.0,3.0,-8.0);
 
@@ -16,7 +23,6 @@ pub struct Player {
     pub yaw: f32,
     pub pitch: f32,
     pub speed: Vec3,
-    pub buffer_in_date: bool,
     pub mesh_instance: MeshInstance,
 }
 impl Player {
