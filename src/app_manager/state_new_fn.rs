@@ -1,22 +1,20 @@
 use std::{collections::HashSet, f32::consts::PI, sync::Arc};
 
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat4, Quat, Vec3, Vec4};
 use wgpu::{BackendOptions, InstanceFlags, MemoryBudgetThresholds, util::DeviceExt};
 use winit::window::Window;
 
 use crate::{
     advanced_rendering::{
-        mesh_instance::MeshInstance,
-        extendable_buffer::BufferVec,
-        camera, instance::{Instance, InstanceRaw},
-        lighting::LightUniform, model::Model, render_vertex::Vertex, texture::Texture
-    },
-    app_manager::{
+        camera, extendable_buffer::BufferVec,
+        instance::{Instance, InstanceRaw},
+        lighting::LightUniform,model::Model,
+        render_vertex::Vertex,
+        texture::Texture
+    }, app_manager::{
         camera::CameraUniform, render_pipeline::create_render_pipeline,
-        state::State
-    },
-    player_controller::player::Player,
-    transform::Transform
+        state::{Pipeline, State}
+    }, collision::bullet_manager::{self, Bullet, BulletManager}, player_controller::player::Player
 };
 
 impl State {
@@ -182,27 +180,27 @@ impl State {
             label: Some("camera_bind_group"),
         });
 
-        let light_render_pipeline = {
-            let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Light Pipeline Layout"),
-                bind_group_layouts: &[Some(&camera_bind_group_layout), Some(&light_bind_group_layout)],
-                immediate_size: 0,
-                // push_constant_ranges: &[],
+        // let light_render_pipeline = {
+        //     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        //         label: Some("Light Pipeline Layout"),
+        //         bind_group_layouts: &[Some(&camera_bind_group_layout), Some(&light_bind_group_layout)],
+        //         immediate_size: 0,
+        //         // push_constant_ranges: &[],
 
-            });
-            let shader = wgpu::ShaderModuleDescriptor {
-                label: Some("Light Shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/light.wgsl").into()),
-            };
-            create_render_pipeline(
-                &device,
-                &layout,
-                config.format,
-                Some(Texture::DEPTH_FORMAT),
-                &[Vertex::desc()],
-                shader,
-            )
-        };
+        //     });
+        //     let shader = wgpu::ShaderModuleDescriptor {
+        //         label: Some("Light Shader"),
+        //         source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/light.wgsl").into()),
+        //     };
+        //     create_render_pipeline(
+        //         &device,
+        //         &layout,
+        //         config.format,
+        //         Some(Texture::DEPTH_FORMAT),
+        //         &[Vertex::desc()],
+        //         shader,
+        //     )
+        // };
 
         let shader = wgpu::ShaderModuleDescriptor {
             label: Some("Normal Shader"),
@@ -227,33 +225,15 @@ impl State {
             &[Vertex::desc(), InstanceRaw::desc()],
             shader,
         );
-        // let instances = (0..Instance::NUM_INSTANCES_PER_ROW).flat_map(|z| {
-        //     (0..Instance::NUM_INSTANCES_PER_ROW).map(move |x| {
-        //         let position = Vec3 { x: (x*4) as f32, y: 0.0, z: (z*4) as f32 } - Instance::INSTANCE_DISPLACEMENT;
 
-        //         let rotation = if position == Vec3::ZERO {
-        //             Quat::from_axis_angle(Vec3::Z, 0.0)
-        //         } else {
-        //             Quat::from_axis_angle(position.normalize(), PI/4.0)
-        //         };
-
-        //         Instance {
-        //             position,_padding:0, rotation,
-        //         }
-        //     })
-        // }).collect::<Vec<_>>();
-        // let instance_data = instances.iter().map(Instance::instance_to_raw).collect::<Vec<_>>();
-        // let instance_buffer = device.create_buffer_init(
-        //     &wgpu::util::BufferInitDescriptor {
-        //         label: Some("Instance Buffer"),
-        //         contents: bytemuck::cast_slice(&instance_data),
-        //         usage: wgpu::BufferUsages::VERTEX,
-        //     }
-        // );
 
         let mut models: Vec<(Model,BufferVec)> = Vec::new();
         models.push((
             Model::load_model("cube.obj", &device, &queue, &texture_bind_group_layout).await.unwrap(),
+            BufferVec::new(size_of::<InstanceRaw>(), &device)
+        ));
+        models.push((
+            Model::load_model("flat.obj", &device, &queue, &texture_bind_group_layout).await.unwrap(),
             BufferVec::new(size_of::<InstanceRaw>(), &device)
         ));
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -261,22 +241,20 @@ impl State {
         });
         models[0].1.push(bytemuck::cast_slice(&[InstanceRaw::default()]), &device, &queue, &mut encoder);
         models[0].1.push(bytemuck::cast_slice(&[Instance::default().instance_to_raw()]), &device, &queue, &mut encoder);
-
-        queue.submit(std::iter::once(encoder.finish()));
+        models[1].1.push(bytemuck::cast_slice(&[Instance {rotation: Quat::default(),_padding: 0, position: Vec3::new(0.0,-1.0,0.0)}.instance_to_raw()]), &device, &queue, &mut encoder);
 
         let depth_texture = Texture::create_depth_texture(&device, &config, "depth_texture");
         surface.configure(&device, &config);
         let _ = window.set_cursor_grab(winit::window::CursorGrabMode::Locked);
         window.set_cursor_visible(false);
-
-        let player: Player = Player {
-            speed: Vec3::ZERO,
-            yaw: -PI/2.0,
-            pitch: 0.0,
-            transform: Transform::default(),
-            mesh_instance: MeshInstance { model_index: 0, instance_index: 0 },
-        };
+        let player = Player::new(&mut models, &device, &queue, &mut encoder, &texture_bind_group_layout).await;
+        
+        queue.submit(std::iter::once(encoder.finish()));
+        let mut bullet_manager = BulletManager::new();
+        bullet_manager.create_bullet(Bullet {pos: Vec3::ZERO, velocity: Vec3::ZERO});
         Ok(Self {
+            current_pipeline: Pipeline::None,
+            bullet_manager,
             models,
             keys: HashSet::new(),
             player,
@@ -285,7 +263,7 @@ impl State {
             camera_uniform,
             projection,
             mouse_pressed: false,
-            light_render_pipeline,
+            // light_render_pipeline,
             light_uniform,
             light_bind_group,
             light_buffer,

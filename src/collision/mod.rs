@@ -1,2 +1,2 @@
 pub mod collision_object;
-pub mod collision_manager;
+pub mod bullet_manager;

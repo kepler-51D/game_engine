@@ -1,16 +1,13 @@
 use std::{collections::HashSet, f32::consts::PI};
 
 use glam::{Mat4, Quat, Vec2, Vec3};
-use wgpu::{Queue};
+use wgpu::{BindGroupLayout, CommandEncoder, Device, Queue};
 use winit::{keyboard::KeyCode};
 
 use crate::{
     advanced_rendering::{
-        instance::Instance,
-        extendable_buffer::BufferVec,
-        mesh_instance::MeshInstance
-    },
-    transform::Transform
+        extendable_buffer::BufferVec, instance::{Instance, InstanceRaw}, mesh_instance::MeshInstance, model::Model
+    }, collision::collision_object::Aabb, transform::Transform
 };
 
 pub const CAM_OFFSET: Vec3 = Vec3::new(3.0,3.0,-8.0);
@@ -24,8 +21,47 @@ pub struct Player {
     pub pitch: f32,
     pub speed: Vec3,
     pub mesh_instance: MeshInstance,
+    // pub collider_index: usize,
+    pub collider: Aabb,
 }
 impl Player {
+    pub async fn new(
+        meshes: &mut Vec<(Model,BufferVec,)>,
+        // collision_manager: &mut CollisionManager,
+        device: &Device,
+        queue: &Queue,
+        encoder: &mut CommandEncoder,
+        texture_bind_group_layout: &BindGroupLayout
+    ) -> Self {
+        let mut player = Self {
+            collider: Aabb {
+                min: Vec3::new(-1.0,-1.0,-1.0),
+                max: Vec3::new(-1.0,-1.0,-1.0),
+            },
+            speed: Vec3::ZERO,
+            yaw: -PI/2.0,
+            pitch: 0.0,
+            transform: Transform::default(),
+            mesh_instance: MeshInstance { model_index:0, instance_index: 0},
+            // collider_index: collision_manager.colliders.len()
+        };
+        let mut found = false;
+        for (index, mesh) in meshes.iter().enumerate() {
+            if mesh.0.name == "cube.obj" {
+                player.mesh_instance.model_index = index;
+                found = true;
+            }
+        }
+        if !found {
+            player.mesh_instance.model_index = meshes.len();
+            meshes.push((
+                Model::load_model("cube.obj", device, queue, texture_bind_group_layout).await.unwrap(),
+                BufferVec::new(size_of::<InstanceRaw>(), device)
+            ));
+        }
+        meshes[player.mesh_instance.model_index].1.push(vec![0u8; size_of::<InstanceRaw>()].as_slice(), device, queue, encoder);
+        player
+    }
     pub fn calc_matrix(&self) -> Mat4 {
         let (sin_pitch, cos_pitch) = self.pitch.sin_cos();
         let (sin_yaw, cos_yaw) = (-self.yaw).sin_cos();
@@ -48,6 +84,20 @@ impl Player {
     }
     pub fn update(&mut self, queue: &Queue, buffer: &BufferVec) {
         self.transform.position += self.speed;
+        // match &mut collision_manager.colliders[self.collider_index].variant {
+        //     CollisionShapeVariant::Sphere { pos, radius } => {
+        //         *pos = self.transform.position;
+        //     }
+        //     _ => {todo!()}
+        // }
+        
+        // if collision_manager.colliders[self.collider_index].is_colliding(&CollisionShape {
+        //     variant: CollisionShapeVariant::Sphere { pos: Vec3::ZERO, radius: 5.0 },
+        //     collision_mask: 1
+        // }) {
+        //     println!("hello");
+        // }
+
 
         buffer.write_elem(self.mesh_instance.instance_index, bytemuck::cast_slice(&[Instance {
             _padding: 0,

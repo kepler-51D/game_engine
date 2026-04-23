@@ -62,6 +62,7 @@ pub struct Mesh {
     pub material: usize,
 }
 pub struct Model {
+    pub name: String,
     pub meshes: Vec<Mesh>,
     pub materials: Vec<Material>,
 }
@@ -219,7 +220,11 @@ impl Model {
             })
             .collect::<Vec<_>>();
 
-        Ok(Model { meshes, materials })
+        Ok(Model {
+            name: file_name.to_string(),
+            meshes,
+            materials})
+
     }
 }
 pub trait DrawModel<'a> {

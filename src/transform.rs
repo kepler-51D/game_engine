@@ -6,8 +6,3 @@ pub struct Transform {
     pub position: Vec3,
     pub rotation: Quat,
 }
-// impl Transform {
-//     pub fn to_bytes(&self) -> &[u8] {
-        
-//     }
-// }
