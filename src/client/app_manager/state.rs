@@ -8,7 +8,6 @@ use crate::{
         model::{DrawModel, Model},
         camera,texture::Texture
     },
-    collision::bullet_manager::BulletManager,
     app_manager::{camera::CameraUniform},
     player_controller::player::{CAM_OFFSET, Player},
 };
@@ -18,14 +17,15 @@ use crate::{
     keyboard::{KeyCode, PhysicalKey},
     window::Window
 };
+use game::collision::bullet_manager::BulletManager;
 
-pub const SLOW_MOTION_TIME_SCALE: f32 = 0.6;
+// pub const SLOW_MOTION_TIME_SCALE: f32 = 0.6;
 
 /// render and game state
 #[allow(dead_code)]
 pub struct State {
-    pub slow_motion: bool,
-    pub time_scale: f32,
+    // pub slow_motion: bool,
+    // pub time_scale: f32,
     pub bullet_manager: BulletManager,
     pub models: Vec<(Model, BufferVec)>,
     pub keys: HashSet<KeyCode>,

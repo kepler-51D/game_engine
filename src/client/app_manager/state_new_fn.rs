@@ -14,8 +14,9 @@ use crate::{
     }, app_manager::{
         camera::CameraUniform, render_pipeline::create_render_pipeline,
         state::State
-    }, collision::bullet_manager::{Bullet, BulletManager}, player_controller::player::Player
+    }, player_controller::player::Player
 };
+use game::collision::bullet_manager::{Bullet, BulletManager};
 
 impl State {
     pub async fn new(window: Arc<Window>) -> anyhow::Result<State> {
@@ -253,8 +254,8 @@ impl State {
         let mut bullet_manager = BulletManager::new();
         bullet_manager.create_bullet(Bullet {pos: Vec3::ZERO, velocity: Vec3::ZERO});
         Ok(Self {
-            slow_motion: false,
-            time_scale: 1.0,
+            // slow_motion: false,
+            // time_scale: 1.0,
             bullet_manager,
             models,
             keys: HashSet::new(),

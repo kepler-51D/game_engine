@@ -7,8 +7,10 @@ use winit::{keyboard::KeyCode};
 use crate::{
     advanced_rendering::{
         extendable_buffer::BufferVec, instance::{Instance, InstanceRaw}, mesh_instance::MeshInstance, model::Model
-    }, collision::collision_object::Aabb, transform::Transform
+    },
+    // game_client::collision::collision_object::Aabb, transform::Transform
 };
+use game::collision::{collision_object::Aabb, transform::Transform};
 
 pub const CAM_OFFSET: Vec3 = Vec3::new(3.0,3.0,-8.0);
 
