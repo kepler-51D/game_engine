@@ -1,23 +1,31 @@
 use std::{collections::HashSet, sync::Arc};
 use glam::{Quat, Vec3};
 use wgpu::{CurrentSurfaceTexture};
-use crate::{advanced_rendering::{extendable_buffer::BufferVec, lighting::LightUniform, model::{DrawModel, Model}}, collision::bullet_manager::BulletManager};
-use crate::app_manager::{camera::CameraUniform};
-use crate::player_controller::player::{CAM_OFFSET, Player};
-use winit::{
-    event::{ElementState, KeyEvent, MouseButton, WindowEvent}, event_loop::ActiveEventLoop, keyboard::{KeyCode, PhysicalKey}, window::Window
+use crate::{
+    advanced_rendering::{
+        extendable_buffer::BufferVec,
+        lighting::LightUniform,
+        model::{DrawModel, Model},
+        camera,texture::Texture
+    },
+    collision::bullet_manager::BulletManager,
+    app_manager::{camera::CameraUniform},
+    player_controller::player::{CAM_OFFSET, Player},
 };
-use crate::advanced_rendering::{camera, texture::Texture};
+    use winit::{
+    event::{ElementState, KeyEvent, MouseButton, WindowEvent},
+    event_loop::ActiveEventLoop,
+    keyboard::{KeyCode, PhysicalKey},
+    window::Window
+};
 
-#[derive(PartialEq)]
-pub enum Pipeline {
-    Default,
-    None,
-}
+pub const SLOW_MOTION_TIME_SCALE: f32 = 0.6;
 
 /// render and game state
+#[allow(dead_code)]
 pub struct State {
-    pub current_pipeline: Pipeline,
+    pub slow_motion: bool,
+    pub time_scale: f32,
     pub bullet_manager: BulletManager,
     pub models: Vec<(Model, BufferVec)>,
     pub keys: HashSet<KeyCode>,
@@ -45,16 +53,14 @@ pub struct State {
     // pub light_render_pipeline: RenderPipeline,
 }
 impl State {
-    pub fn update(&mut self, _dt: instant::Duration) {
-        if self.bullet_manager.aabb_colliding_with_bullet(&self.player.collider).is_some() {
-            println!("hit by bullet");
-        }
+    pub fn update(&mut self, dt: instant::Duration) {
+        // if self.bullet_manager.aabb_colliding_with_bullet(&self.player.collider.offset_by(self.player.transform.position)).is_some() {
+        //     println!("hit by bullet");
+        // }
         let old_position: Vec3 = self.light_uniform.pos;
-        self.light_uniform.pos =
-            Quat::from_axis_angle((0.0, 1.0, 0.0).into(), 0.001)
-                * old_position
-                ;
-        self.player.update(&self.queue,&self.models[self.player.mesh_instance.model_index].1);
+        self.light_uniform.pos = Quat::from_axis_angle((0.0, 1.0, 0.0).into(), 0.001) * old_position;
+        
+        self.player.update(&self.queue,&self.models[self.player.mesh_instance.model_index].1,dt.as_secs_f32(),&self.keys);
         self.queue.write_buffer(&self.light_buffer, 0, bytemuck::cast_slice(&[self.light_uniform]));
         self.camera_uniform = CameraUniform {
             pos: (self.player.transform.position + CAM_OFFSET).to_homogeneous(),
@@ -199,14 +205,13 @@ impl State {
             //         &self.light_bind_group
             //     );
             // }
-            if self.current_pipeline != Pipeline::Default {
-                render_pass.set_pipeline(&self.render_pipeline);
-            }
+            render_pass.set_pipeline(&self.render_pipeline);
+            
             for (model, trans_buffers) in &self.models {
                 render_pass.set_vertex_buffer(1, trans_buffers.buffer.slice(..));
                 render_pass.draw_model_instanced(
                     model,
-                    0..(trans_buffers.len as u32),
+                    0..(trans_buffers.len() as u32),
                     &self.camera_bind_group,
                     &self.light_bind_group
                 );

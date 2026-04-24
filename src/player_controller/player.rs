@@ -12,22 +12,22 @@ use crate::{
 
 pub const CAM_OFFSET: Vec3 = Vec3::new(3.0,3.0,-8.0);
 
-const PLAYER_SPEED: f32 = 10.0;
 const MOUSE_SENSITIVITY: f32 = 0.01;
-/// add to State struct
+const PLAYER_SPEED: f32 = 4.0;
+const MAX_SPEED: f32 = 40.0;
+
+#[allow(dead_code)]
 pub struct Player {
     pub transform: Transform,
     pub yaw: f32,
     pub pitch: f32,
     pub speed: Vec3,
     pub mesh_instance: MeshInstance,
-    // pub collider_index: usize,
     pub collider: Aabb,
 }
 impl Player {
     pub async fn new(
-        meshes: &mut Vec<(Model,BufferVec,)>,
-        // collision_manager: &mut CollisionManager,
+        meshes: &mut Vec<(Model,BufferVec)>,
         device: &Device,
         queue: &Queue,
         encoder: &mut CommandEncoder,
@@ -36,14 +36,13 @@ impl Player {
         let mut player = Self {
             collider: Aabb {
                 min: Vec3::new(-1.0,-1.0,-1.0),
-                max: Vec3::new(-1.0,-1.0,-1.0),
+                max: Vec3::new( 1.0, 1.0, 1.0),
             },
             speed: Vec3::ZERO,
             yaw: -PI/2.0,
             pitch: 0.0,
             transform: Transform::default(),
             mesh_instance: MeshInstance { model_index:0, instance_index: 0},
-            // collider_index: collision_manager.colliders.len()
         };
         let mut found = false;
         for (index, mesh) in meshes.iter().enumerate() {
@@ -82,22 +81,18 @@ impl Player {
     pub fn get_right_dir(&self) -> Vec3 {
         Vec3::Z.rotate_axis(Vec3::Y, self.yaw)
     }
-    pub fn update(&mut self, queue: &Queue, buffer: &BufferVec) {
-        self.transform.position += self.speed;
-        // match &mut collision_manager.colliders[self.collider_index].variant {
-        //     CollisionShapeVariant::Sphere { pos, radius } => {
-        //         *pos = self.transform.position;
-        //     }
-        //     _ => {todo!()}
-        // }
-        
-        // if collision_manager.colliders[self.collider_index].is_colliding(&CollisionShape {
-        //     variant: CollisionShapeVariant::Sphere { pos: Vec3::ZERO, radius: 5.0 },
-        //     collision_mask: 1
-        // }) {
-        //     println!("hello");
-        // }
 
+    pub fn update(&mut self, queue: &Queue, buffer: &BufferVec, delta: f32, keys: &HashSet<KeyCode>) {
+        let acceleration = self.wasd_input(keys)*PLAYER_SPEED;
+        self.speed += acceleration;
+        self.transform.position += self.speed*delta;
+
+        if self.speed.length() > MAX_SPEED {
+            self.speed = self.speed.normalize() * MAX_SPEED;
+        } else if self.speed.length() < 0.0001 {
+            self.speed = Vec3::ZERO;
+        }
+        self.speed -= self.speed * 10.0 * delta;
 
         buffer.write_elem(self.mesh_instance.instance_index, bytemuck::cast_slice(&[Instance {
             _padding: 0,
@@ -105,20 +100,26 @@ impl Player {
             rotation: Quat::from_axis_angle(Vec3::Y,self.yaw),
         }.instance_to_raw()]), queue);
     }
-    pub fn input(&mut self, keys: &HashSet<KeyCode>, delta: f32) -> bool {
+    pub fn wasd_input(&mut self, keys: &HashSet<KeyCode>) -> Vec3 {
+        let mut ret_vec = Vec3::ZERO;
         if keys.contains(&KeyCode::KeyW) {
-            self.transform.position += self.get_forward_dir()*PLAYER_SPEED*delta;
+            // self.transform.position += self.get_forward_dir()*PLAYER_SPEED*delta;
+            ret_vec += self.get_forward_dir();
         }
         if keys.contains(&KeyCode::KeyS) {
-            self.transform.position += -self.get_forward_dir()*PLAYER_SPEED*delta;
+            // self.transform.position += -self.get_forward_dir()*PLAYER_SPEED*delta;
+            ret_vec += -self.get_forward_dir();
         }
         if keys.contains(&KeyCode::KeyA) {
-            self.transform.position += -self.get_right_dir()*PLAYER_SPEED*delta;
+            // self.transform.position += -self.get_right_dir()*PLAYER_SPEED*delta;
+            ret_vec += -self.get_right_dir();
         }
         if keys.contains(&KeyCode::KeyD) {
-            self.transform.position += self.get_right_dir()*PLAYER_SPEED*delta;
+            // self.transform.position += self.get_right_dir()*PLAYER_SPEED*delta;
+            ret_vec += self.get_right_dir();
         }
-        true
+        if ret_vec == Vec3::ZERO {return Vec3::ZERO}
+        ret_vec.normalize()
     }
     pub fn mouse_input(&mut self, delta: Vec2) {
         self.yaw -= delta.x * MOUSE_SENSITIVITY;

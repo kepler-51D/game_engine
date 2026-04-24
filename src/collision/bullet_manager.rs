@@ -7,13 +7,14 @@ pub struct BulletManager {
     free: usize,
     bullet_pool: Vec<Bullet>,
 }
+#[allow(dead_code)]
 impl BulletManager {
     pub fn aabb_colliding_with_bullet(&self, aabb: &Aabb) -> Option<usize> {
         (0..self.free).find(|&i| point_aabb_colliding(&self.bullet_pool[i].pos, aabb))
     }
-    pub fn update_bullets(&mut self) {
-        for bullet in &mut self.bullet_pool {
-            bullet.pos += bullet.velocity;
+    pub fn update_bullets(&mut self, delta: f32) {
+        for bullet in &mut self.bullet_pool[..self.free] {
+            bullet.pos += bullet.velocity*delta;
         }
     }
     pub fn new() -> Self {
@@ -26,7 +27,8 @@ impl BulletManager {
     pub fn create_bullet(&mut self, new_bullet: Bullet) -> usize {
         if self.free >= self.bullet_pool.len() {
             self.bullet_pool.push(new_bullet);
-            self.free
+            self.free += 1;
+            self.free - 1
         }
         else {
             self.bullet_pool[self.free] = new_bullet;

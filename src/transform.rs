@@ -1,7 +1,7 @@
 use glam::{Vec3,Quat};
 
-use crate::advanced_rendering::instance::Instance;
 #[derive(Default)]
+#[allow(dead_code)]
 pub struct Transform {
     pub position: Vec3,
     pub rotation: Quat,

@@ -3,9 +3,19 @@ pub struct Aabb {
     pub min: Vec3,
     pub max: Vec3,
 }
+impl Aabb {
+    pub fn offset_by(&self,offset: Vec3) -> Self {
+        Self { min: self.min + offset, max: self.max + offset }
+    }
+}
 pub struct Sphere {
     pub pos: Vec3,
     pub radius: f32,
+}
+impl Sphere {
+    pub fn offset_by(&self,offset: Vec3) -> Self {
+        Self { pos: self.pos + offset, radius: self.radius }
+    }
 }
 pub struct Obb {
     pub pos: Vec3,
@@ -21,14 +31,14 @@ pub fn point_sphere_colliding(point: &Vec3, sphere: &Sphere) -> bool {
 }
 pub fn sphere_aabb_colliding(sphere: &Sphere, aabb: &Aabb) -> bool {
         let mut sq_dist: f32 = 0.0;
-        if sphere.pos.x < aabb.min.x {sq_dist += (aabb.min.x - sphere.pos.x) * (aabb.min.x - sphere.pos.x);}
-        if sphere.pos.x > aabb.max.x {sq_dist += (sphere.pos.x - aabb.max.x) * (sphere.pos.x - aabb.max.x);}
+        if sphere.pos.x < aabb.min.x {sq_dist += (aabb.min.x - sphere.pos.x).powi(2); }
+        if sphere.pos.x > aabb.max.x {sq_dist += (sphere.pos.x - aabb.max.x).powi(2); }
 
-        if sphere.pos.y < aabb.min.y {sq_dist += (aabb.min.y - sphere.pos.y) * (aabb.min.y - sphere.pos.y);}
-        if sphere.pos.y > aabb.max.y {sq_dist += (sphere.pos.y - aabb.max.y) * (sphere.pos.y - aabb.max.y);}
+        if sphere.pos.y < aabb.min.y {sq_dist += (aabb.min.y - sphere.pos.y).powi(2); }
+        if sphere.pos.y > aabb.max.y {sq_dist += (sphere.pos.y - aabb.max.y).powi(2); }
         
-        if sphere.pos.z < aabb.min.z {sq_dist += (aabb.min.z - sphere.pos.z) * (aabb.min.z - sphere.pos.z);}
-        if sphere.pos.z > aabb.max.z {sq_dist += (sphere.pos.z - aabb.max.z) * (sphere.pos.z - aabb.max.z);}
+        if sphere.pos.z < aabb.min.z {sq_dist += (aabb.min.z - sphere.pos.z).powi(2); }
+        if sphere.pos.z > aabb.max.z {sq_dist += (sphere.pos.z - aabb.max.z).powi(2); }
 
         sq_dist < (sphere.radius*sphere.radius)
 }

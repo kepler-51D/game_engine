@@ -13,8 +13,8 @@ use crate::{
         texture::Texture
     }, app_manager::{
         camera::CameraUniform, render_pipeline::create_render_pipeline,
-        state::{Pipeline, State}
-    }, collision::bullet_manager::{self, Bullet, BulletManager}, player_controller::player::Player
+        state::State
+    }, collision::bullet_manager::{Bullet, BulletManager}, player_controller::player::Player
 };
 
 impl State {
@@ -242,7 +242,7 @@ impl State {
         models[0].1.push(bytemuck::cast_slice(&[InstanceRaw::default()]), &device, &queue, &mut encoder);
         models[0].1.push(bytemuck::cast_slice(&[Instance::default().instance_to_raw()]), &device, &queue, &mut encoder);
         models[1].1.push(bytemuck::cast_slice(&[Instance {rotation: Quat::default(),_padding: 0, position: Vec3::new(0.0,-1.0,0.0)}.instance_to_raw()]), &device, &queue, &mut encoder);
-
+        
         let depth_texture = Texture::create_depth_texture(&device, &config, "depth_texture");
         surface.configure(&device, &config);
         let _ = window.set_cursor_grab(winit::window::CursorGrabMode::Locked);
@@ -253,7 +253,8 @@ impl State {
         let mut bullet_manager = BulletManager::new();
         bullet_manager.create_bullet(Bullet {pos: Vec3::ZERO, velocity: Vec3::ZERO});
         Ok(Self {
-            current_pipeline: Pipeline::None,
+            slow_motion: false,
+            time_scale: 1.0,
             bullet_manager,
             models,
             keys: HashSet::new(),

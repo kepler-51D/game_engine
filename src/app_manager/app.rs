@@ -91,11 +91,11 @@ impl ApplicationHandler<State> for App {
                 let now = instant::Instant::now();
                 let dt = now - self.last_render_time;
                 self.last_render_time = now;
-                current_state.player.input(&current_state.keys,dt.as_secs_f32());
+                // current_state.player.input(&current_state.keys,dt.as_secs_f32());
                 current_state.update(dt);
                 current_state.render_world().unwrap();
 
-                println!("{}", 1.0/dt.as_secs_f32());
+                // println!("{}", 1.0/dt.as_secs_f32());
             }
             WindowEvent::Resized(val) => {
                 current_state.resize(val.width,val.height);
