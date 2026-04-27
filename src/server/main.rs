@@ -1,51 +1,38 @@
-use std::net::Ipv4Addr;
+mod entity_management;
 
-use glam::Vec3;
-use steamworks::{Client, Server, ServerMode};
+use std::{time::Instant};
 
-pub struct ServerState {
-    pub steam_server: (Server,Client),
-    pub players: Vec<Player>,
+use crate::entity_management::{Enemy, Manager, PlayerManager, ProjectileManager};
+
+pub struct Server {
+    pub name: String,
+    pub players: PlayerManager,
+    pub projectile_entities: ProjectileManager,
+    pub enemy_entities: Vec<Enemy>,
+
 }
-impl Default for ServerState {
+impl Manager for Server {
+    fn update(&mut self, dt: f32) {
+        self.projectile_entities.update(dt);
+    }
+}
+impl Default for Server {
     fn default() -> Self {
-        let ret = Self {
-            players: Vec::new(),
-            steam_server: match Server::init(
-                Ipv4Addr::new(0, 0, 0, 0),
-                27015, 27016, ServerMode::Authentication, "1.0.0") {
-                    Ok(val) => {
-                        val
-                    },
-                    Err(err) => {
-                        println!("{err}");
-                        panic!()
-                    }
-                }
-        };
-        ret.steam_server.0.set_product("game game");
-        ret.steam_server.0.set_game_description("game game game");
-        ret.steam_server.0.set_server_name("rawrrrr");
-        ret.steam_server.0.set_max_players(8);
-        ret.steam_server.0.set_dedicated_server(true);
-        ret
+        Self {
+            name: String::from("test server"),
+            enemy_entities: Vec::new(),
+            projectile_entities: ProjectileManager::default(),
+            players: PlayerManager::default(),
+        }
     }
-}
-impl ServerState {
-    pub fn connect_player(&mut self) {
-
-    }
-}
-
-pub struct Player {
-    pub pos: Vec3,
-    pub velocity: Vec3,
-    pub yaw: f32,
-    pub pitch: f32,
 }
 fn main() {
-    let server_state = ServerState::default();
+    let mut server = Server::default();
+    let mut last_frame_time = Instant::now();
     loop {
-
+        let time = Instant::now();
+        let dt = (time - last_frame_time).as_secs_f32();
+        last_frame_time = time;
+        server.update(dt);
     }
 }

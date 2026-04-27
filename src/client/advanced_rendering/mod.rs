@@ -6,3 +6,4 @@ pub mod instance;
 pub mod camera;
 pub mod extendable_buffer;
 pub mod mesh_instance;
+pub mod fast_model;

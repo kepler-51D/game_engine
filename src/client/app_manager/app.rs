@@ -1,8 +1,9 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use crate::app_manager::state::State;
 use glam::{Vec2};
 use instant::Instant;
+use spin_sleep::sleep;
 use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, KeyEvent, WindowEvent},
@@ -25,15 +26,15 @@ impl App {
     }
 }
 impl ApplicationHandler<State> for App {
+    fn memory_warning(&mut self, event_loop: &ActiveEventLoop) {
+        panic!();
+    }
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window_attributes = Window::default_attributes();
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
-
         let state = pollster::block_on(State::new(window)).unwrap();
         self.state = Some(state);
-
     }
-
     #[allow(unused_mut)]
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, mut event: State) {
         self.state = Some(event);
@@ -91,11 +92,13 @@ impl ApplicationHandler<State> for App {
                 let now = instant::Instant::now();
                 let dt = now - self.last_render_time;
                 self.last_render_time = now;
-                // current_state.player.input(&current_state.keys,dt.as_secs_f32());
                 current_state.update(dt);
                 current_state.render_world().unwrap();
 
-                // println!("{}", 1.0/dt.as_secs_f32());
+                if 1000i64.pow(3)/60 - dt.as_nanos() as i64 > 0 {
+                    sleep(Duration::from_nanos(1000u64.pow(3)/60 - dt.as_nanos() as u64));
+                }
+                println!("{}", 1.0/dt.as_secs_f32());
             }
             WindowEvent::Resized(val) => {
                 current_state.resize(val.width,val.height);
@@ -103,5 +106,4 @@ impl ApplicationHandler<State> for App {
             _ => {}
         }
     }
-    // ...
 }

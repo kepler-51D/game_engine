@@ -85,8 +85,8 @@ impl Player {
     }
 
     pub fn update(&mut self, queue: &Queue, buffer: &BufferVec, delta: f32, keys: &HashSet<KeyCode>) {
-        let acceleration = self.wasd_input(keys)*PLAYER_SPEED;
-        self.speed += acceleration;
+        let acceleration = self.wasd_input(keys);
+        self.speed += acceleration*PLAYER_SPEED;
         self.transform.position += self.speed*delta;
 
         if self.speed.length() > MAX_SPEED {

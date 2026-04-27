@@ -1,4 +1,5 @@
 use glam::{Quat, Vec3};
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Aabb {
     pub min: Vec3,
     pub max: Vec3,
@@ -8,6 +9,7 @@ impl Aabb {
         Self { min: self.min + offset, max: self.max + offset }
     }
 }
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Sphere {
     pub pos: Vec3,
     pub radius: f32,
@@ -17,6 +19,7 @@ impl Sphere {
         Self { pos: self.pos + offset, radius: self.radius }
     }
 }
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Obb {
     pub pos: Vec3,
     pub half_size: Vec3,

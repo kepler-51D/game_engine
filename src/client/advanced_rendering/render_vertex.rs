@@ -11,16 +11,6 @@ pub struct Vertex {
     pub bitangent: Vec3,
 }
 impl Vertex {
-    // pub const fn new() -> Self {
-    //     Self {
-    //         pos: Vec3::ZERO,
-    //         normal: Vec3::ZERO,
-    //         texture_coords: Vec2::ZERO,
-    //         tangent: Vec3::ZERO,
-    //         bitangent: Vec3::ZERO,
-    //     }
-    // }
-    
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
             array_stride: size_of::<Self>() as wgpu::BufferAddress,
@@ -41,12 +31,12 @@ impl Vertex {
                     shader_location: 2,
                     format: wgpu::VertexFormat::Float32x3,
                 },
-                wgpu::VertexAttribute {
+                wgpu::VertexAttribute { // tangent
                     offset: size_of::<[f32; 8]>() as wgpu::BufferAddress,
                     shader_location: 3,
                     format: wgpu::VertexFormat::Float32x3,
                 },
-                wgpu::VertexAttribute {
+                wgpu::VertexAttribute { // bit tangent
                     offset: size_of::<[f32; 11]>() as wgpu::BufferAddress,
                     shader_location: 4,
                     format: wgpu::VertexFormat::Float32x3,
