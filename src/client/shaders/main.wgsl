@@ -80,7 +80,8 @@ fn vs_main(
 
 // ----------------------------------------------------------------------------------------------------------------------------------
 // fragment shader
-const COLOUR_BAND_COUNT: f32 = 6;
+const COLOUR_BAND_COUNT: f32 = 3;
+// note: 6 is a good number
 
 @group(1) @binding(0)
 var t_diffuse: texture_2d<f32>;
@@ -94,6 +95,8 @@ var s_normal: sampler;
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let object_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.texture_coords);
     let object_normal: vec4<f32> = textureSample(t_normal, s_normal, in.texture_coords);
+    // let object_normal: vec4<f32> = vec4<f32>(0.0, 0.0, 1.0, 0.0);
+
     let ambient_strength = 0.05;
     let ambient_color = light.color * ambient_strength;
 
@@ -108,7 +111,13 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let specular_strength = pow(max(dot(tangent_normal, half_dir), 0.0), 32.0);
     let specular_color = specular_strength * light.color;
 
-    var result = (ambient_color + diffuse_color + specular_color) * object_color.xyz;
-    let result_rounded = round(result * COLOUR_BAND_COUNT) / COLOUR_BAND_COUNT;
+    let result = (ambient_color + diffuse_color + specular_color) * object_color.xyz;
+    // let result_rounded = round(result * COLOUR_BAND_COUNT) / COLOUR_BAND_COUNT;
+    // let result_rounded = normalize(result) *
+    //     (floor(length(result) * COLOUR_BAND_COUNT) / COLOUR_BAND_COUNT);
+    let base: f32 = 8;
+    let b = log2(round(exp2(3*length(result)))) / log2(8.0);
+    let result_rounded = normalize(result) * b;
+
     return vec4<f32>(result_rounded, object_color.a);
 }

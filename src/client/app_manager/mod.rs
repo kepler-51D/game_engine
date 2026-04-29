@@ -5,3 +5,4 @@ pub mod mesh;
 pub mod render_pipeline;
 // pub mod camera_controller;
 pub mod state_new_fn;
+pub mod enemy_manager;
