@@ -56,7 +56,7 @@ impl Player {
         if !found {
             player.mesh_instance.model_index = meshes.len();
             meshes.push((
-                Model::load_model("cube.obj", device, queue, texture_bind_group_layout).await.unwrap(),
+                Model::load_model_obj("cube.obj", device, queue, texture_bind_group_layout).await.unwrap(),
                 BufferVec::new(size_of::<InstanceRaw>(), device)
             ));
         }

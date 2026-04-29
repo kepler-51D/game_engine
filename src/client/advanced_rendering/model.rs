@@ -1,6 +1,7 @@
 use std::ops::{Range};
 use std::io::{BufReader, Cursor};
 use glam::{Vec2, Vec3};
+use wgpu::Device;
 use wgpu::{util::DeviceExt};
 use crate::app_manager::mesh::load_string;
 use crate::{advanced_rendering::{render_vertex::Vertex, texture::Texture}};
@@ -67,12 +68,12 @@ pub struct Model {
     pub materials: Vec<Material>,
 }
 impl Model {
-    pub async fn load_model(
+    pub async fn load_model_obj(
         file_name: &str,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         layout: &wgpu::BindGroupLayout,
-    ) -> anyhow::Result<Model> {
+    ) -> anyhow::Result<Self> {
         let obj_text = load_string(file_name).await?;
         
         // let obj_text = std::fs::read(file_name);

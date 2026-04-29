@@ -51,7 +51,9 @@ impl Manager for ProjectileManager {
     }
 }
 
-
+pub struct ServerPlayer {
+    pub core: Player,
+}
 #[derive(Default)]
 pub struct PlayerManager {
     pub players: Vec<Player>

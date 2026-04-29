@@ -1,4 +1,5 @@
 use std::{collections::HashSet, sync::Arc};
+use bytemuck::cast_slice;
 use glam::{Quat, Vec3};
 use wgpu::{CurrentSurfaceTexture};
 use crate::{
@@ -50,6 +51,7 @@ pub struct State {
     pub light_uniform: LightUniform,
     pub light_buffer: wgpu::Buffer,
     pub light_bind_group: wgpu::BindGroup,
+    pub time_buffer: wgpu::Buffer,
     // pub light_render_pipeline: RenderPipeline,
 }
 impl State {
@@ -58,8 +60,8 @@ impl State {
         //     println!("hit by bullet");
         // }
         let old_position: Vec3 = self.light_uniform.pos;
-        self.light_uniform.pos = Quat::from_axis_angle((0.0, 1.0, 0.0).into(), 0.001) * old_position;
-        
+        self.light_uniform.pos = Quat::from_axis_angle((0.0, 1.0, 0.0).into(), 2.0*dt.as_secs_f32()) * old_position;
+        self.queue.write_buffer(&self.time_buffer, 0, cast_slice(&[dt.as_secs_f32()]));
         self.player.update(&self.queue,&self.models[self.player.mesh_instance.model_index].1,dt.as_secs_f32(),&self.keys);
         self.queue.write_buffer(&self.light_buffer, 0, bytemuck::cast_slice(&[self.light_uniform]));
         self.camera_uniform = CameraUniform {

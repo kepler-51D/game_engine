@@ -1,7 +1,7 @@
 use std::{collections::HashSet, f32::consts::PI, sync::Arc};
 
 use glam::{Mat4, Quat, Vec3, Vec4};
-use wgpu::{BackendOptions, InstanceFlags, MemoryBudgetThresholds, util::DeviceExt};
+use wgpu::{BackendOptions, BindingResource, InstanceFlags, MemoryBudgetThresholds, util::DeviceExt};
 use winit::window::Window;
 
 use crate::{
@@ -70,6 +70,16 @@ impl State {
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
@@ -170,12 +180,23 @@ impl State {
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             }
         );
+        let time_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Time Buffer"),
+                contents: bytemuck::cast_slice(&[0.0f32]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            }
+        );
         let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &camera_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
                     resource: camera_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: time_buffer.as_entire_binding(),
                 }
             ],
             label: Some("camera_bind_group"),
@@ -204,7 +225,7 @@ impl State {
         // };
 
         let shader = wgpu::ShaderModuleDescriptor {
-            label: Some("Normal Shader"),
+            label: Some("main shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/main.wgsl").into()),
         };
         let render_pipeline_layout =
@@ -216,7 +237,6 @@ impl State {
                     Some(&light_bind_group_layout),
                 ],
                 immediate_size: 0,
-                // push_constant_ranges: &[],
             });
         let render_pipeline = create_render_pipeline(
             &device,
@@ -226,15 +246,13 @@ impl State {
             &[Vertex::desc(), InstanceRaw::desc()],
             shader,
         );
-
-
         let mut models: Vec<(Model,BufferVec)> = Vec::new();
         models.push((
-            Model::load_model("cube.obj", &device, &queue, &texture_bind_group_layout).await.unwrap(),
+            Model::load_model_obj("cube.obj", &device, &queue, &texture_bind_group_layout).await.unwrap(),
             BufferVec::new(size_of::<InstanceRaw>(), &device)
         ));
         models.push((
-            Model::load_model("flat.obj", &device, &queue, &texture_bind_group_layout).await.unwrap(),
+            Model::load_model_obj("flat.obj", &device, &queue, &texture_bind_group_layout).await.unwrap(),
             BufferVec::new(size_of::<InstanceRaw>(), &device)
         ));
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -254,6 +272,7 @@ impl State {
         let mut bullet_manager = BulletManager::new();
         bullet_manager.create_bullet(Bullet {pos: Vec3::ZERO, velocity: Vec3::ZERO});
         Ok(Self {
+            time_buffer,
             // slow_motion: false,
             // time_scale: 1.0,
             bullet_manager,
