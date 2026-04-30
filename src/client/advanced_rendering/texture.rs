@@ -11,7 +11,7 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float; // 1.
+    pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
     
     pub async fn load_texture(
         file_name: &str,
@@ -83,7 +83,7 @@ impl Texture {
         } else {
             wgpu::TextureFormat::Rgba8UnormSrgb
         };
-        let rgba = img.to_rgba8();
+        let rgba: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = img.to_rgba8();
         let dimensions = img.dimensions();
 
         let size = wgpu::Extent3d {

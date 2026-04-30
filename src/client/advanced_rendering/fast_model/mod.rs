@@ -1,1 +1,1 @@
-pub mod dynamic_model;
+pub mod gltf;

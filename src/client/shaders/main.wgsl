@@ -97,7 +97,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let object_normal: vec4<f32> = textureSample(t_normal, s_normal, in.texture_coords);
     // let object_normal: vec4<f32> = vec4<f32>(0.0, 0.0, 1.0, 0.0);
 
-    let ambient_strength = 0.05;
+    let ambient_strength = 0.00;
     let ambient_color = light.color * ambient_strength;
 
     let tangent_normal = object_normal.xyz * 2.0 - 1.0;
@@ -115,8 +115,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // let result_rounded = round(result * COLOUR_BAND_COUNT) / COLOUR_BAND_COUNT;
     // let result_rounded = normalize(result) *
     //     (floor(length(result) * COLOUR_BAND_COUNT) / COLOUR_BAND_COUNT);
-    let base: f32 = 8;
-    let b = log2(round(exp2(3*length(result)))) / log2(8.0);
+    let base: f32 = 8.0;
+    let b = log2(round(exp2(log2(base)*length(result)))) / log2(base);
     let result_rounded = normalize(result) * b;
 
     return vec4<f32>(result_rounded, object_color.a);

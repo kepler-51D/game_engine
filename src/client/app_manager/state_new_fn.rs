@@ -1,7 +1,7 @@
 use std::{collections::HashSet, f32::consts::PI, sync::Arc};
 
 use glam::{Mat4, Quat, Vec3, Vec4};
-use wgpu::{BackendOptions, BindingResource, InstanceFlags, MemoryBudgetThresholds, util::DeviceExt};
+use wgpu::{BackendOptions, InstanceFlags, MemoryBudgetThresholds, util::DeviceExt};
 use winit::window::Window;
 
 use crate::{
@@ -21,7 +21,6 @@ use game::collision::bullet_manager::{Bullet, BulletManager};
 impl State {
     pub async fn new(window: Arc<Window>) -> anyhow::Result<State> {
         let size = window.inner_size();
-
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
             flags: InstanceFlags::default(),
@@ -271,6 +270,10 @@ impl State {
         queue.submit(std::iter::once(encoder.finish()));
         let mut bullet_manager = BulletManager::new();
         bullet_manager.create_bullet(Bullet {pos: Vec3::ZERO, velocity: Vec3::ZERO});
+
+
+        crate::advanced_rendering::fast_model::gltf::Model::load_model("res/test.glb",&device, &queue, &texture_bind_group_layout);
+
         Ok(Self {
             time_buffer,
             // slow_motion: false,
