@@ -1,7 +1,6 @@
 use std::ops::{Range};
 use std::io::{BufReader, Cursor};
 use glam::{Vec2, Vec3};
-use wgpu::Device;
 use wgpu::{util::DeviceExt};
 use crate::app_manager::mesh::load_string;
 use crate::{advanced_rendering::{render_vertex::Vertex, texture::Texture}};

@@ -4,12 +4,9 @@ use glam::{Quat, Vec3};
 use wgpu::{CurrentSurfaceTexture};
 use crate::{
     advanced_rendering::{
-        extendable_buffer::BufferVec,
-        lighting::LightUniform,
-        model::{DrawModel, Model},
-        camera,texture::Texture
+        camera, extendable_buffer::BufferVec, fast_model::gltf::{self, DrawModelGltf}, lighting::LightUniform, model::{DrawModel, Model}, texture::Texture
     },
-    app_manager::{camera::CameraUniform},
+    app_manager::camera::CameraUniform,
     player_controller::player::{CAM_OFFSET, Player},
 };
     use winit::{
@@ -25,12 +22,13 @@ use game::collision::bullet_manager::BulletManager;
 /// render and game state
 #[allow(dead_code)]
 pub struct State {
-    // pub slow_motion: bool,
-    // pub time_scale: f32,
+    pub gltf_render_pipeline: wgpu::RenderPipeline,
     pub bullet_manager: BulletManager,
     pub models: Vec<(Model, BufferVec)>,
     pub keys: HashSet<KeyCode>,
     pub player: Player,
+
+    pub gltf_test_model: gltf::Model,
 
     pub surface: wgpu::Surface<'static>,
     pub device: wgpu::Device,
@@ -196,28 +194,30 @@ impl State {
             });
             
             
-            render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
-            // render_pass.set_pipeline(&self.light_render_pipeline);    
+            // render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
+            // // render_pass.set_pipeline(&self.light_render_pipeline);    
+            // // for (model, trans_buffers) in &self.models {
+            // //     render_pass.set_vertex_buffer(1, trans_buffers.buffer.slice(..));
+            // //     render_pass.draw_light_model_instanced(
+            // //         model,
+            // //         0..(trans_buffers.len as u32),
+            // //         &self.camera_bind_group,
+            // //         &self.light_bind_group
+            // //     );
+            // // }
+            // render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_pipeline(&self.gltf_render_pipeline);
+            
             // for (model, trans_buffers) in &self.models {
             //     render_pass.set_vertex_buffer(1, trans_buffers.buffer.slice(..));
-            //     render_pass.draw_light_model_instanced(
+            //     render_pass.draw_model_instanced(
             //         model,
-            //         0..(trans_buffers.len as u32),
+            //         0..(trans_buffers.len() as u32),
             //         &self.camera_bind_group,
             //         &self.light_bind_group
             //     );
             // }
-            render_pass.set_pipeline(&self.render_pipeline);
-            
-            for (model, trans_buffers) in &self.models {
-                render_pass.set_vertex_buffer(1, trans_buffers.buffer.slice(..));
-                render_pass.draw_model_instanced(
-                    model,
-                    0..(trans_buffers.len() as u32),
-                    &self.camera_bind_group,
-                    &self.light_bind_group
-                );
-            }
+            render_pass.draw_model_gltf(&self.device, &self.gltf_test_model, &self.camera_bind_group, &self.light_bind_group);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));

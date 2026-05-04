@@ -1,16 +1,12 @@
 use std::{collections::HashSet, f32::consts::PI, sync::Arc};
 
 use glam::{Mat4, Quat, Vec3, Vec4};
-use wgpu::{BackendOptions, InstanceFlags, MemoryBudgetThresholds, util::DeviceExt};
+use wgpu::{BackendOptions, InstanceFlags, MemoryBudgetThresholds, include_wgsl, util::DeviceExt};
 use winit::window::Window;
 
 use crate::{
     advanced_rendering::{
-        camera, extendable_buffer::BufferVec,
-        instance::{Instance, InstanceRaw},
-        lighting::LightUniform,model::Model,
-        render_vertex::Vertex,
-        texture::Texture
+        camera, extendable_buffer::BufferVec, fast_model::gltf, instance::{Instance, InstanceRaw}, lighting::LightUniform, model::Model, render_vertex::Vertex, texture::Texture
     }, app_manager::{
         camera::CameraUniform, render_pipeline::create_render_pipeline,
         state::State
@@ -225,7 +221,7 @@ impl State {
 
         let shader = wgpu::ShaderModuleDescriptor {
             label: Some("main shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/main.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../compiled_shaders/main.wgsl").into()),
         };
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -239,6 +235,7 @@ impl State {
             });
         let render_pipeline = create_render_pipeline(
             &device,
+            Some("render pipeline"),
             &render_pipeline_layout,
             config.format,
             Some(Texture::DEPTH_FORMAT),
@@ -272,9 +269,31 @@ impl State {
         bullet_manager.create_bullet(Bullet {pos: Vec3::ZERO, velocity: Vec3::ZERO});
 
 
-        crate::advanced_rendering::fast_model::gltf::Model::load_model("res/test.glb",&device, &queue, &texture_bind_group_layout);
+        let model = crate::advanced_rendering::fast_model::gltf::Model::load_model("res/test.glb",&device, &queue, &texture_bind_group_layout);
+        
+        let gltf_render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Gltf Render Pipeline Layout"),
+                bind_group_layouts: &[
+                    Some(&camera_bind_group_layout),
+                    Some(&texture_bind_group_layout),
+                    Some(&light_bind_group_layout),
+                ],
+                immediate_size: 0,
+            });
 
+        let gltf_render_pipeline = create_render_pipeline(
+            &device,
+            Some("gltf render pipeline"),
+            &gltf_render_pipeline_layout,
+            config.format,
+            Some(Texture::DEPTH_FORMAT),
+            &[gltf::Vertex::desc()],
+            include_wgsl!("../compiled_shaders/gltf.wgsl"),
+        );
         Ok(Self {
+            gltf_render_pipeline,
+            gltf_test_model: model.await,
             time_buffer,
             // slow_motion: false,
             // time_scale: 1.0,

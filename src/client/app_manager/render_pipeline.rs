@@ -1,5 +1,6 @@
 pub fn create_render_pipeline(
     device: &wgpu::Device,
+    label: Option<&str>,
     layout: &wgpu::PipelineLayout,
     color_format: wgpu::TextureFormat,
     depth_format: Option<wgpu::TextureFormat>,
@@ -9,7 +10,7 @@ pub fn create_render_pipeline(
     let shader = device.create_shader_module(shader);
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("Render Pipeline"),
+        label,
         multiview_mask: None,
         layout: Some(layout),
         vertex: wgpu::VertexState {
