@@ -316,8 +316,6 @@ pub trait DrawModelGltf<'a> {
         &mut self,
         device: &Device,
         model: &'a Model,
-        camera_bind_group: &'a wgpu::BindGroup,
-        light_bind_group: &'a wgpu::BindGroup,
     );
     #[allow(dead_code)]
     fn draw_model_gltf_instanced(
@@ -325,8 +323,6 @@ pub trait DrawModelGltf<'a> {
         device: &Device,
         model: &'a Model,
         instances: Range<u32>,
-        camera_bind_group: &'a wgpu::BindGroup,
-        light_bind_group: &'a wgpu::BindGroup,
     );
 }
 impl<'a, 'b> DrawModelGltf<'b> for wgpu::RenderPass<'a>
@@ -359,21 +355,17 @@ where
         &mut self,
         device: &Device,
         model: &'b Model,
-        camera_bind_group: &'b wgpu::BindGroup,
-        light_bind_group: &'b wgpu::BindGroup,
     ) {
-        self.draw_model_gltf_instanced(device, model, 0..1, camera_bind_group, light_bind_group);
+        self.draw_model_gltf_instanced(device, model, 0..1);
     }
     fn draw_model_gltf_instanced(
         &mut self,
         device: &Device,
         model: &'b Model,
         instances: Range<u32>,
-        camera_bind_group: &'b wgpu::BindGroup,
-        light_bind_group: &'b wgpu::BindGroup,
     ) {
-        self.set_bind_group(0, camera_bind_group, &[]);
-        self.set_bind_group(2, light_bind_group, &[]);
+        // self.set_bind_group(0, camera_bind_group, &[]);
+        // self.set_bind_group(2, light_bind_group, &[]);
         for root_node in &model.root_nodes {
             self.draw_node_instanced(&Transform::default(device), model, instances.clone(), *root_node);
         }

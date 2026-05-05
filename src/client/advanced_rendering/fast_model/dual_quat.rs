@@ -1,3 +1,5 @@
+use std::ops::{Add, Div, Mul, Sub};
+
 use glam::{Quat, Vec3, Vec4};
 
 #[repr(C)]
@@ -22,5 +24,73 @@ impl DualQuat {
     pub fn transform(&self, pos: Vec3) -> Vec3 {
         let rotated_point = self.real * pos;
         rotated_point + (self.dual * 2.0 * self.real.inverse()).xyz()
+    }
+    pub fn dot(self, rhs: Self) -> f32 {
+        self.real.dot(rhs.real)
+    }
+    pub fn normalise(self) -> Self {
+        let real_len = self.real.length_recip();
+        Self {
+            real: self.real.normalize(),
+            dual: self.dual * real_len - self.real * self.real.dot(self.dual),
+        }
+    }
+    pub fn inverse(self) -> Self {
+        // self.conjugate() / self.normalise()
+        Self {
+            real: self.real.inverse(),
+            dual: self.dual * self.real.inverse() * self.real.inverse()
+        }
+    }
+    pub fn conjugate(self) -> Self {
+        Self {
+            real: self.real.conjugate(),
+            dual: self.dual.conjugate(),
+        }
+    }
+}
+impl Mul for DualQuat {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self {
+            real: self.real * rhs.real,
+            dual: (self.real * rhs.dual + self.dual * rhs.real)
+        }
+    }
+}
+impl Mul<f32> for DualQuat {
+    type Output = Self;
+    fn mul(self, rhs: f32) -> Self::Output {
+        Self {
+            real: self.real * rhs,
+            dual: self.dual * rhs,
+        }
+    }
+}
+impl Div<f32> for DualQuat {
+    type Output = Self;
+    fn div(self, rhs: f32) -> Self::Output {
+        Self {
+            real: self.real / rhs,
+            dual: self.dual / rhs,
+        }
+    }
+}
+impl Add for DualQuat {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            real: self.real + rhs.real,
+            dual: self.dual + rhs.dual,
+        }
+    }
+}
+impl Sub for DualQuat {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            real: self.real - rhs.real,
+            dual: self.dual - rhs.dual,
+        }
     }
 }
