@@ -20,7 +20,7 @@ impl FlexBuffer {
             len: 0,
             maxlen: Self::START_MAXLEN,
             buffer: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("buffer_vec"),
+                label: Some("flex_buffer"),
                 contents: bytemuck::cast_slice(vec![0_u8; Self::START_MAXLEN].as_slice()),
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
             }),
@@ -40,7 +40,7 @@ impl FlexBuffer {
         debug_assert!(new_size > self.len);
         self.maxlen = new_size;
         let new_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("buffer_vec"),
+            label: Some("flex_buffer"),
             contents: bytemuck::cast_slice(vec![0_u8; new_size].as_slice()),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
         });

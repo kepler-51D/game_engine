@@ -201,7 +201,7 @@ impl State {
             //     render_pass.set_vertex_buffer(1, trans_buffers.buffer.slice(..));
             //     render_pass.draw_light_model_instanced(
             //         model,
-            //         0..(trans_buffers.len as u32),
+            //         0..(trans_buffers.len() as u32),
             //         &self.camera_bind_group,
             //         &self.light_bind_group
             //     );

@@ -9,6 +9,25 @@ pub struct DualQuat {
     dual: Quat,
 }
 impl DualQuat {
+    pub fn desc() -> wgpu::VertexBufferLayout<'static> {
+        use std::mem;
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &[
+                wgpu::VertexAttribute { // real part
+                    offset: 0,
+                    shader_location: 5,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+                wgpu::VertexAttribute { // dual part
+                    offset: mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
+                    shader_location: 6,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+            ],
+        }
+    }
     fn new(real: Quat, dual: Quat) -> Self {
         Self {
             real,
@@ -20,6 +39,12 @@ impl DualQuat {
             rot,
             (Quat::from_vec4(Vec4::new(pos.x,pos.y,pos.z,0.0)) * rot) * 0.5
         )
+    }
+    pub fn get_rot(self) -> Quat {
+        self.real
+    }
+    pub fn get_pos(self) -> Vec3 {
+        (self.dual * self.real.inverse() * 2.0).xyz()
     }
     pub fn transform(&self, pos: Vec3) -> Vec3 {
         let rotated_point = self.real * pos;
@@ -36,7 +61,6 @@ impl DualQuat {
         }
     }
     pub fn inverse(self) -> Self {
-        // self.conjugate() / self.normalise()
         Self {
             real: self.real.inverse(),
             dual: self.dual * self.real.inverse() * self.real.inverse()
@@ -46,6 +70,12 @@ impl DualQuat {
         Self {
             real: self.real.conjugate(),
             dual: self.dual.conjugate(),
+        }
+    }
+    pub fn rotate(self, rotation: Quat) -> Self {
+        Self {
+            real: self.real * rotation,
+            dual: self.dual
         }
     }
 }

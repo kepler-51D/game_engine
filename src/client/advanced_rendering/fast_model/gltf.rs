@@ -1,9 +1,9 @@
 use std::ops::Range;
 
-use wgpu::{Buffer, Device, Queue, util::DeviceExt};
-use glam::{Mat4, Quat};
+use wgpu::{Buffer, CommandEncoder, Device, Queue, util::DeviceExt};
+use glam::{Mat4, Quat, Vec3, Vec4, Vec4Swizzles};
 
-use crate::advanced_rendering::{fast_model::transform::Transform, texture::Texture};
+use crate::advanced_rendering::{extendable_buffer::BufferVec, fast_model::{dual_quat::DualQuat, transform::Transform}, texture::Texture};
 
 /// stores a list of primitives
 pub struct Mesh {
@@ -16,7 +16,6 @@ pub struct Primitive {
     pub material_ref: usize,
 }
 pub struct Node {
-    pub transform: Transform,
     pub mesh: Option<usize>,
     pub children: Vec<usize>,
 }
@@ -37,6 +36,7 @@ pub struct Material {
 }
 
 pub struct Model {
+    pub bone_transform_buffers: BufferVec,
     pub meshes: Vec<Mesh>,
     pub nodes: Vec<Node>,
     pub root_nodes: Vec<usize>,
@@ -47,8 +47,11 @@ pub struct Model {
 #[repr(C)]
 #[derive(bytemuck::Zeroable, bytemuck::NoUninit, Clone, Copy)]
 pub struct Vertex {
-    pub position: [f32;3],
+    pub position: [f32; 3],
     pub uv: [f32; 2],
+    pub normal: [f32; 3],
+    pub tangent: [f32 ;3],
+    pub bit_tangent: [f32 ;3],
 }
 impl Vertex {
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
@@ -66,21 +69,21 @@ impl Vertex {
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float32x2,
                 },
-                // wgpu::VertexAttribute { // normal
-                //     offset: size_of::<[f32;5]>() as wgpu::BufferAddress,
-                //     shader_location: 2,
-                //     format: wgpu::VertexFormat::Float32x3,
-                // },
-                // wgpu::VertexAttribute { // tangent
-                //     offset: size_of::<[f32; 8]>() as wgpu::BufferAddress,
-                //     shader_location: 3,
-                //     format: wgpu::VertexFormat::Float32x3,
-                // },
-                // wgpu::VertexAttribute { // bit tangent
-                //     offset: size_of::<[f32; 11]>() as wgpu::BufferAddress,
-                //     shader_location: 4,
-                //     format: wgpu::VertexFormat::Float32x3,
-                // },
+                wgpu::VertexAttribute { // normal
+                    offset: size_of::<[f32;5]>() as wgpu::BufferAddress,
+                    shader_location: 2,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute { // tangent
+                    offset: size_of::<[f32; 8]>() as wgpu::BufferAddress,
+                    shader_location: 3,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute { // bit tangent
+                    offset: size_of::<[f32; 11]>() as wgpu::BufferAddress,
+                    shader_location: 4,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
             ]
         }
     }
@@ -91,11 +94,13 @@ impl Model {
         name: &str,
         device: &Device,
         queue: &Queue,
+        encoder: &mut CommandEncoder,
         layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let (doc, buffers, images) = gltf::import(name).unwrap();
 
         let mut new_self = Model {
+            bone_transform_buffers: BufferVec::new(size_of::<DualQuat>(), device),
             meshes: Vec::new(),
             nodes: Vec::new(),
             vertex_buffers: Vec::new(),
@@ -225,79 +230,98 @@ impl Model {
         for scene in doc.scenes() {
             for node in scene.nodes() {
                 new_self.root_nodes.push(new_self.nodes.len());
-                Model::parse_node(&mut new_self, &node, buffers.as_slice(), device);
+                Model::parse_node(&mut new_self, &node, buffers.as_slice(), device, queue, encoder);
             }
         }
         new_self
     }
-    fn parse_node(model: &mut Model, node: &gltf::Node, buffers: &[gltf::buffer::Data], device: &Device) -> usize {
-        let mut new_node = Node {
-            // transform: Mat4::from_cols_array_2d(&node.transform().matrix()),
-            transform: Transform::new((Quat::IDENTITY,Quat::IDENTITY), device),
+    fn parse_node(model: &mut Model, node: &gltf::Node, buffers: &[gltf::buffer::Data], device: &Device, queue: &Queue, encoder: &mut CommandEncoder) -> usize {
+        let (translation, rotation, _scale) = node.transform().decomposed();
+        let transform = DualQuat::from(Vec3::from_array(translation), Quat::from_array(rotation));
+
+        let new_node = Node {
             children: Vec::new(),
-            mesh: None,
-        };
-        new_node.mesh = match node.mesh() {
-            Some(mesh) => {
-                let mut primitives = Vec::new();
-                for primitive in mesh.primitives() {
-                    let reader = primitive.reader(|buf| {
-                        Some(&buffers[buf.index()])
-                    });
-                    let positions: Vec<[f32;3]> = reader.read_positions().unwrap().collect();
-                    let normals: Vec<[f32;3]> = reader.read_normals().unwrap().collect();
-                    let uvs: Vec<[f32;2]> = match reader.read_tex_coords(0) {
-                        Some(val) => {val.into_f32().collect()}
-                        None => {
-                            vec![[0.0;2]; positions.len()]
-                        }
-                    };
-                    let indices: Vec<u32> = reader.read_indices().unwrap().into_u32().collect();
-                    let material = primitive.material();
-                    let base_colour = material.pbr_metallic_roughness().base_color_factor();
-                    let texture_index = material.pbr_metallic_roughness().base_color_texture().map(|t| {
-                        t.texture().source().index()
-                    });
-                    let mut vertex_buffer = Vec::new();
-                    for i in 0..positions.len() {
-                        vertex_buffer.push(Vertex {
-                            position: positions[i],
-                            uv: uvs[i],
+            mesh: match node.mesh() {
+                Some(mesh) => {
+                    let mut primitives = Vec::new();
+                    for primitive in mesh.primitives() {
+                        let reader = primitive.reader(|buf| {
+                            Some(&buffers[buf.index()])
                         });
+                        let positions: Vec<[f32;3]> = reader.read_positions().unwrap().collect();
+                        let normals: Vec<[f32;3]> = match reader.read_normals() {
+                            Some(val) => {val.collect()}
+                            None => {
+                                vec![[0.0, 0.0, 1.0]; positions.len()]
+                            }
+                        };
+                        let tangents: Vec<[f32;4]> = match reader.read_tangents() {
+                            Some(val) => {
+                                val.collect()
+                            },
+                            None => {
+                                (0..normals.len()).map(|i| {
+                                    let normal = Vec3::from_array(normals[i]);
+                                    let up = if normal.dot(Vec3::Y).abs() < 0.999 { Vec3::Y } else { Vec3::Z };
+                                    let tangent = normal.cross(up).normalize();
+                                    tangent.extend(1.0).to_array()
+                                }).collect()
+                            }
+                        };
+                        let uvs: Vec<[f32;2]> = match reader.read_tex_coords(0) {
+                            Some(val) => {val.into_f32().collect()},
+                            None => {vec![[0.0;2]; positions.len()]}
+                        };
+                        let indices: Vec<u32> = reader.read_indices().unwrap().into_u32().collect();
+                        let material = primitive.material();
+                        let base_colour = material.pbr_metallic_roughness().base_color_factor();
+                        let texture_index = material.pbr_metallic_roughness().base_color_texture().map(|t| {
+                            t.texture().source().index()
+                        });
+                        let mut vertex_buffer = Vec::new();
+                        for i in 0..positions.len() {
+                            vertex_buffer.push(Vertex {
+                                position: positions[i],
+                                uv: uvs[i],
+                                normal: normals[i],
+                                tangent: Vec4::from_array(tangents[i]).xyz().to_array(),
+                                bit_tangent: (Vec4::from_array(tangents[i]).xyz().cross(Vec3::from_array(normals[i])) * tangents[i][3]).to_array()
+                            });
+                        }
+                        primitives.push(Primitive {
+                            vertex_buffer_ref: model.vertex_buffers.len(),
+                            index_buffer_ref: model.index_buffers.len(),
+                            material_ref: texture_index.unwrap_or(0),
+                        });
+                        model.index_buffers.push((device.create_buffer_init(
+                            &wgpu::util::BufferInitDescriptor {
+                                label: Some("index buffer"),
+                                contents: bytemuck::cast_slice(indices.as_slice()),
+                                usage: wgpu::BufferUsages::INDEX,
+                            }
+                        ),indices.len()));
+                        model.vertex_buffers.push(device.create_buffer_init(
+                            &wgpu::util::BufferInitDescriptor {
+                                label: Some("vertex buffer"),
+                                contents: bytemuck::cast_slice(vertex_buffer.as_slice()),
+                                usage: wgpu::BufferUsages::VERTEX,
+                            }
+                        ));
                     }
-                    
-                    primitives.push(Primitive {
-                        vertex_buffer_ref: model.vertex_buffers.len(),
-                        index_buffer_ref: model.vertex_buffers.len(),
-                        material_ref: texture_index.unwrap_or(0),
-                    });
-                    model.index_buffers.push((device.create_buffer_init(
-                        &wgpu::util::BufferInitDescriptor {
-                            label: Some("index buffer"),
-                            contents: bytemuck::cast_slice(indices.as_slice()),
-                            usage: wgpu::BufferUsages::INDEX,
-                        }
-                    ),indices.len()));
-                    model.vertex_buffers.push(device.create_buffer_init(
-                        &wgpu::util::BufferInitDescriptor {
-                            label: Some("vertex buffer"),
-                            contents: bytemuck::cast_slice(vertex_buffer.as_slice()),
-                            usage: wgpu::BufferUsages::VERTEX,
-                        }
-                    ));
-                }
-                let new_mesh = Mesh {
-                    primitives,
-                };
-                model.meshes.push(new_mesh);
-                Some(model.meshes.len()-1)
-            },
-            None => {None}
+                    let new_mesh = Mesh {
+                        primitives,
+                    };
+                    model.meshes.push(new_mesh);
+                    Some(model.meshes.len()-1)
+                },
+                None => {None}
+            }
         };
         let self_index = model.nodes.len();
         model.nodes.push(new_node);
+        model.bone_transform_buffers.push(bytemuck::cast_slice(&[transform]), device, queue, encoder);
         for child in node.children() {
-            let address = Model::parse_node(model, &child, buffers, device);
+            let address = Model::parse_node(model, &child, buffers, device, queue, encoder);
             model.nodes[self_index].children.push(address);
         }
         self_index
@@ -307,7 +331,6 @@ impl Model {
 pub trait DrawModelGltf<'a> {
     fn draw_node_instanced(
         &mut self,
-        transform: &Transform,
         model: &'a Model,
         instances: Range<u32>,
         node_index: usize,
@@ -331,7 +354,6 @@ where
 {
     fn draw_node_instanced(
         &mut self,
-        transform: &Transform,
         model: &'b Model,
         instances: Range<u32>,
         node_index: usize,
@@ -348,7 +370,7 @@ where
             }
         }
         for child in &node.children {
-            self.draw_node_instanced(&node.transform, model, instances.clone(), *child);
+            self.draw_node_instanced(model, instances.clone(), *child);
         }
     }
     fn draw_model_gltf(
@@ -364,10 +386,11 @@ where
         model: &'b Model,
         instances: Range<u32>,
     ) {
+        self.set_vertex_buffer(1, model.bone_transform_buffers.buffer.slice(..));
         // self.set_bind_group(0, camera_bind_group, &[]);
         // self.set_bind_group(2, light_bind_group, &[]);
         for root_node in &model.root_nodes {
-            self.draw_node_instanced(&Transform::default(device), model, instances.clone(), *root_node);
+            self.draw_node_instanced(model, instances.clone(), *root_node);
         }
     }
 }

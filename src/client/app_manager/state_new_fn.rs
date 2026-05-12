@@ -6,7 +6,7 @@ use winit::window::Window;
 
 use crate::{
     advanced_rendering::{
-        camera, extendable_buffer::BufferVec, fast_model::gltf, instance::{Instance, InstanceRaw}, lighting::LightUniform, model::Model, render_vertex::Vertex, texture::Texture
+        camera, extendable_buffer::BufferVec, fast_model::{dual_quat::DualQuat, gltf}, instance::{Instance, InstanceRaw}, lighting::LightUniform, model::Model, render_vertex::Vertex, texture::Texture
     }, app_manager::{
         camera::CameraUniform, render_pipeline::create_render_pipeline,
         state::State
@@ -264,13 +264,13 @@ impl State {
         window.set_cursor_visible(false);
         let player = Player::new(&mut models, &device, &queue, &mut encoder, &texture_bind_group_layout).await;
         
-        queue.submit(std::iter::once(encoder.finish()));
         let mut bullet_manager = BulletManager::new();
         bullet_manager.create_bullet(Bullet {pos: Vec3::ZERO, velocity: Vec3::ZERO});
 
 
-        let model = crate::advanced_rendering::fast_model::gltf::Model::load_model("res/test.glb",&device, &queue, &texture_bind_group_layout);
+        let model = crate::advanced_rendering::fast_model::gltf::Model::load_model("res/test.glb",&device, &queue,&mut encoder, &texture_bind_group_layout).await;
         
+        queue.submit(std::iter::once(encoder.finish()));
         let gltf_render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Gltf Render Pipeline Layout"),
@@ -288,12 +288,12 @@ impl State {
             &gltf_render_pipeline_layout,
             config.format,
             Some(Texture::DEPTH_FORMAT),
-            &[gltf::Vertex::desc()],
+            &[gltf::Vertex::desc(), DualQuat::desc()],
             include_wgsl!("../compiled_shaders/gltf.wgsl"),
         );
         Ok(Self {
             gltf_render_pipeline,
-            gltf_test_model: model.await,
+            gltf_test_model: model,
             time_buffer,
             // slow_motion: false,
             // time_scale: 1.0,
