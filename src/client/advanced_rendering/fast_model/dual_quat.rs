@@ -9,6 +9,7 @@ pub struct DualQuat {
     dual: Quat,
 }
 impl DualQuat {
+    // pub const IDENTITY: Self = Self::from(Vec3::ZERO, Quat::IDENTITY);
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         use std::mem;
         wgpu::VertexBufferLayout {
@@ -37,27 +38,30 @@ impl DualQuat {
     pub fn from(pos: Vec3, rot: Quat) -> Self {
         Self::new(
             rot,
-            (Quat::from_vec4(Vec4::new(pos.x,pos.y,pos.z,0.0)) * rot) * 0.5
+            // (Quat::from_vec4(Vec4::new(pos.x,pos.y,pos.z,0.0)) * rot) * 0.5
+            (rot * Quat::from_vec4(Vec4::new(pos.x, pos.y, pos.z, 0.0))) * 0.5
         )
     }
     pub fn get_rot(self) -> Quat {
         self.real
     }
     pub fn get_pos(self) -> Vec3 {
-        (self.dual * self.real.inverse() * 2.0).xyz()
+        (self.dual * self.real.conjugate() * 2.0).xyz()
     }
     pub fn transform(&self, pos: Vec3) -> Vec3 {
         let rotated_point = self.real * pos;
-        rotated_point + (self.dual * 2.0 * self.real.inverse()).xyz()
+        rotated_point + (self.dual * 2.0 * self.real.conjugate()).xyz()
     }
     pub fn dot(self, rhs: Self) -> f32 {
         self.real.dot(rhs.real)
     }
     pub fn normalise(self) -> Self {
-        let real_len = self.real.length_recip();
+        // let real_len = self.real.length_recip();
+        let real_norm = self.real.length();
         Self {
             real: self.real.normalize(),
-            dual: self.dual * real_len - self.real * self.real.dot(self.dual),
+            // dual: self.dual * real_len - self.real * self.real.dot(self.dual),
+            dual: (self.dual - self.real * self.real.dot(self.dual) / real_norm) / real_norm,
         }
     }
     pub fn inverse(self) -> Self {

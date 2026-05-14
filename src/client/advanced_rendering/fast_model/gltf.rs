@@ -230,14 +230,14 @@ impl Model {
         for scene in doc.scenes() {
             for node in scene.nodes() {
                 new_self.root_nodes.push(new_self.nodes.len());
-                Model::parse_node(&mut new_self, &node, buffers.as_slice(), device, queue, encoder);
+                Model::parse_node(&mut new_self, DualQuat::from(Vec3::ZERO, Quat::IDENTITY), &node, buffers.as_slice(), device, queue, encoder);
             }
         }
         new_self
     }
-    fn parse_node(model: &mut Model, node: &gltf::Node, buffers: &[gltf::buffer::Data], device: &Device, queue: &Queue, encoder: &mut CommandEncoder) -> usize {
+    fn parse_node(model: &mut Model, parent_transform: DualQuat, node: &gltf::Node, buffers: &[gltf::buffer::Data], device: &Device, queue: &Queue, encoder: &mut CommandEncoder) -> usize {
         let (translation, rotation, _scale) = node.transform().decomposed();
-        let transform = DualQuat::from(Vec3::from_array(translation), Quat::from_array(rotation));
+        let transform = parent_transform * DualQuat::from(Vec3::from_array(translation), Quat::from_array(rotation));
 
         let new_node = Node {
             children: Vec::new(),
@@ -321,7 +321,7 @@ impl Model {
         model.nodes.push(new_node);
         model.bone_transform_buffers.push(bytemuck::cast_slice(&[transform]), device, queue, encoder);
         for child in node.children() {
-            let address = Model::parse_node(model, &child, buffers, device, queue, encoder);
+            let address = Model::parse_node(model, transform, &child, buffers, device, queue, encoder);
             model.nodes[self_index].children.push(address);
         }
         self_index
@@ -358,7 +358,25 @@ where
         instances: Range<u32>,
         node_index: usize,
     ) {
+        // let node = &model.nodes[node_index];
+
+        // if let Some(mesh_index) = node.mesh {
+        //     let mesh = &model.meshes[mesh_index];
+        //     for primitive in &mesh.primitives {
+        //         self.set_bind_group(1, &model.materials[primitive.material_ref].bind_group, &[]);
+        //         self.set_vertex_buffer(0, model.vertex_buffers[primitive.vertex_buffer_ref].slice(..));
+        //         self.set_index_buffer(model.index_buffers[primitive.index_buffer_ref].0.slice(..), wgpu::IndexFormat::Uint32);
+        //         self.draw_indexed(0..(model.index_buffers[primitive.index_buffer_ref].1 as u32), 0, instances.clone());
+        //     }
+        // }
+        // for child in &node.children {
+        //     self.draw_node_instanced(model, instances.clone(), *child);
+        // }
         let node = &model.nodes[node_index];
+    
+        let transform_size = std::mem::size_of::<DualQuat>() as u64;
+        let offset = node_index as u64 * transform_size;
+        self.set_vertex_buffer(1, model.bone_transform_buffers.buffer.slice(offset..offset + transform_size));
 
         if let Some(mesh_index) = node.mesh {
             let mesh = &model.meshes[mesh_index];
@@ -369,6 +387,7 @@ where
                 self.draw_indexed(0..(model.index_buffers[primitive.index_buffer_ref].1 as u32), 0, instances.clone());
             }
         }
+        
         for child in &node.children {
             self.draw_node_instanced(model, instances.clone(), *child);
         }
@@ -386,7 +405,7 @@ where
         model: &'b Model,
         instances: Range<u32>,
     ) {
-        self.set_vertex_buffer(1, model.bone_transform_buffers.buffer.slice(..));
+        // self.set_vertex_buffer(1, model.bone_transform_buffers.buffer.slice(..));
         // self.set_bind_group(0, camera_bind_group, &[]);
         // self.set_bind_group(2, light_bind_group, &[]);
         for root_node in &model.root_nodes {

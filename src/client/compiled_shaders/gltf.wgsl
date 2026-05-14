@@ -53,11 +53,17 @@ fn rotate_vec3_by_quat(v: vec3<f32>, q: vec4<f32>) -> vec3<f32> {
     return 2.0 * dot(u, v) * u + (s * s - dot(u, u)) * v + 2.0 * s * cross(u, v);
 }
 
+fn quat_mul(a: vec4<f32>, b: vec4<f32>) -> vec4<f32> {
+    return vec4<f32>(a.w * b.xyz + b.w * a.xyz + cross(a.xyz, b.xyz), a.w * b.w - dot(a.xyz, b.xyz));
+}
+
 @vertex
 fn vs_main(model: VertexInput, bone_transform: BoneTransformInput) -> VertexOutput {
     let bone_rot = bone_transform.real_part;
-    let bone_pos = (bone_transform.dual_part * vec4<f32>(-bone_rot.xyz, bone_rot.w) * 2.0).xyz;
-    let world_position = vec4<f32>((model.position + rotate_vec3_by_quat(bone_pos, bone_rot)) * 10, 1.0);
+    let bone_dual = bone_transform.dual_part;
+    let bone_rot_conj = vec4<f32>(-bone_rot.xyz, bone_rot.w);
+    let bone_pos = quat_mul(bone_dual, bone_rot_conj).xyz * 2.0;
+    let world_position = vec4<f32>((rotate_vec3_by_quat(model.position * 10.0, bone_rot) + bone_pos), 1.0);
     var out: VertexOutput;
     out.clip_position = camera.view_proj * world_position;
     out.texture_coords = model.texture_coords;
